@@ -25,6 +25,7 @@ const db = require('./config/database');
 app.use(cors()); // TODO: Configure allowed origins specifically for production
 app.use(express.json()); // Modern replacement for body-parser JSON
 app.use(express.urlencoded({ extended: true })); // Modern replacement for body-parser urlencoded
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Database Connection Test (Optional but helpful) ---
 async function testDbConnection() {

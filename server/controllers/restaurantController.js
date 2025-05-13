@@ -34,8 +34,7 @@ exports.getAllRestaurants = async (req, res) => {
 
 // Search restaurants by criteria
 exports.searchRestaurants = async (req, res) => {
-  const { date, time, party_size, location, cuisine_type, price_range, rating } = req.query;
-  
+  const { date, time, party_size, location, cuisine_type, day_of_week,price_range, rating } = req.query;
   try {
     let query = `
       SELECT 
@@ -77,25 +76,33 @@ exports.searchRestaurants = async (req, res) => {
     }
     
     // Add time and party_size filter (complex subquery)
-    if (time && party_size) {
-      query += `
-        AND EXISTS (
+if (time && party_size) {
+  query += `
+    AND EXISTS (
+      SELECT 1
+      FROM tables t
+      WHERE t.restaurant_id = r.id
+        AND t.capacity >= ?
+        AND NOT EXISTS (
           SELECT 1
-          FROM tables t
-          WHERE t.restaurant_id = r.id
-            AND t.capacity >= ?
-            AND NOT EXISTS (
-              SELECT 1
-              FROM reservations res
-              WHERE res.table_id = t.id
-                AND res.reservation_date = ?
-                AND res.reservation_time = ?
-                AND res.status IN ('confirmed', 'pending')
-            )
+          FROM reservations res
+          WHERE res.table_id = t.id
+            AND res.reservation_date = ?
+            AND res.reservation_time = TIME(?)
+            AND res.status IN ('confirmed', 'pending')
         )
-      `;
-      queryParams.push(party_size, date, time);
-    }
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM operating_hours oh
+      WHERE oh.restaurant_id = r.id
+        AND oh.day_of_week = ?
+        AND TIME(?) BETWEEN TIME(oh.opening_time) AND TIME(oh.closing_time)
+    )
+  `;
+  queryParams.push(party_size, date, time, day_of_week, time);
+}
+
     
     query += ` GROUP BY r.id ORDER BY r.name`;
     
@@ -246,10 +253,10 @@ exports.createRestaurant = async (req, res) => {
     );
     
     const restaurant_id = result.insertId;
-    
+    const operating_hours_Array=operating_hours && !Array.isArray(operating_hours)?JSON.parse(operating_hours):operating_hours
     // Insert operating hours
-    if (operating_hours && Array.isArray(operating_hours)) {
-      for (const hour of operating_hours) {
+    if (operating_hours_Array && Array.isArray(operating_hours_Array)) {
+      for (const hour of operating_hours_Array) {
         await connection.query(
           `INSERT INTO operating_hours (restaurant_id, day_of_week, opening_time, closing_time)
            VALUES (?, ?, ?, ?)`,
@@ -351,11 +358,11 @@ exports.updateRestaurant = async (req, res) => {
       longitude,
       operating_hours
     } = req.body;
-    
+     const operating_hours_Array=operating_hours && !Array.isArray(operating_hours)?JSON.parse(operating_hours):operating_hours
+      
     // Start a transaction
     const connection = await db.getConnection();
-    await connection.beginTransaction();
-    
+    await connection.beginTransaction(); 
     try {
       // Update restaurant details
       await connection.query(
@@ -374,7 +381,7 @@ exports.updateRestaurant = async (req, res) => {
       );
       
       // Update operating hours if provided
-      if (operating_hours && Array.isArray(operating_hours)) {
+      if (operating_hours_Array && Array.isArray(operating_hours_Array)) {
         // Delete existing hours
         await connection.query(
           'DELETE FROM operating_hours WHERE restaurant_id = ?',
@@ -382,13 +389,16 @@ exports.updateRestaurant = async (req, res) => {
         );
         
         // Insert new hours
-        for (const hour of operating_hours) {
+        for (const hour of operating_hours_Array) {
           await connection.query(
             `INSERT INTO operating_hours (restaurant_id, day_of_week, opening_time, closing_time)
              VALUES (?, ?, ?, ?)`,
             [id, hour.day_of_week, hour.opening_time, hour.closing_time]
           );
         }
+      }
+      else{
+        console.log(typeof operating_hours);
       }
       
       // Handle uploaded photos if any
