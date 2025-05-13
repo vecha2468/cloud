@@ -7,6 +7,44 @@ const emailSender = require('../utils/emailSender');
 const { log } = require('console');
 
 // Get all restaurants
+async function checkReservationAvailability(restaurantId, date, time, dayOfWeek) {
+  // Check if the time is within operating hours
+  const [operatingHours] = await db.query(
+    `
+    SELECT 1
+    FROM operating_hours oh
+    WHERE oh.restaurant_id = ?
+      AND oh.day_of_week = ?
+      AND TIME(?) BETWEEN TIME(oh.opening_time) AND TIME(oh.closing_time)
+    `,
+    [restaurantId, dayOfWeek, time]
+  );
+
+  if (operatingHours.length === 0) {
+    return false; // Time is not within operating hours
+  }
+
+  // Check if there are no reservations at the given time
+  const [reservations] = await db.query(
+    `
+    SELECT 1
+    FROM reservations res
+    JOIN tables t ON res.table_id = t.id
+    WHERE t.restaurant_id = ?
+      AND res.reservation_date = ?
+      AND TIME(res.reservation_time) = TIME(?)
+      AND res.status IN ('confirmed', 'pending')
+    `,
+    [restaurantId, date, time]
+  );
+
+  return reservations.length === 0; // Return true if no reservations exist
+}
+ function formatTime(date) {
+  return date.toISOString().substr(11, 5); // Extract HH:mm from ISO string
+}
+
+
 exports.getAllRestaurants = async (req, res) => {
   try {
     const [restaurants] = await db.query(`
@@ -42,10 +80,8 @@ exports.searchRestaurants = async (req, res) => {
         (SELECT COUNT(*) FROM reviews WHERE restaurant_id = r.id) AS reviews_count,
         (SELECT AVG(rating) FROM reviews WHERE restaurant_id = r.id) AS average_rating,
         (SELECT photo_url FROM restaurant_photos WHERE restaurant_id = r.id AND is_primary = 1 LIMIT 1) AS primary_photo,
-        (SELECT COUNT(*) FROM reservations WHERE restaurant_id = r.id AND reservation_date = ? AND status IN ('confirmed', 'pending')) AS bookings_today,
-        GROUP_CONCAT(DISTINCT oh.opening_time ORDER BY oh.opening_time SEPARATOR ',') AS available_times
+        (SELECT COUNT(*) FROM reservations WHERE restaurant_id = r.id AND reservation_date = ? AND status IN ('confirmed', 'pending')) AS bookings_today
       FROM restaurants r
-      LEFT JOIN operating_hours oh ON r.id = oh.restaurant_id
       WHERE r.is_approved = 1
     `;
     
@@ -88,7 +124,9 @@ if (time && party_size) {
           FROM reservations res
           WHERE res.table_id = t.id
             AND res.reservation_date = ?
-            AND res.reservation_time = TIME(?)
+            AND (
+              res.reservation_time BETWEEN SUBTIME(TIME(?), '00:30:00') AND ADDTIME(TIME(?), '00:30:00')
+            )
             AND res.status IN ('confirmed', 'pending')
         )
     )
@@ -100,7 +138,7 @@ if (time && party_size) {
         AND TIME(?) BETWEEN TIME(oh.opening_time) AND TIME(oh.closing_time)
     )
   `;
-  queryParams.push(party_size, date, time, day_of_week, time);
+  queryParams.push(party_size, date, time, time, day_of_week, time);
 }
 
     
@@ -109,20 +147,44 @@ if (time && party_size) {
     const [restaurants] = await db.query(query, queryParams);
     
     //  Filter for available time slots if time and party_size are provided
-    let availableRestaurants = restaurants;
-    
-    if (time && party_size) {
-      availableRestaurants = restaurants.map(restaurant => {
-        return {
-          ...restaurant,
-          available_times: restaurant.available_times ? restaurant.available_times.split(',') : []
-        };
-      });
-    }
+      const filteredRestaurants = await Promise.all(
+      restaurants.map(async (restaurant) => {
+        const availableTimes = [];
+        const targetTime = new Date(`1970-01-01T${time}:00Z`);
+
+        // Check availability at the requested time, +30 minutes, and -30 minutes
+        const timeOffsets = [0, 30 * 60 * 1000, -30 * 60 * 1000]; // Current time, +30 minutes, -30 minutes
+        for (const offset of timeOffsets) {
+          const checkTime = new Date(targetTime.getTime() + offset);
+          const formattedTime = formatTime(checkTime);
+
+          const isAvailable = await checkReservationAvailability(
+            restaurant.id,
+            date,
+            formattedTime,
+            day_of_week
+          );
+
+          if (isAvailable) {
+            availableTimes.push(formattedTime);
+          }
+        }
+
+        // Only include restaurants that have availability at any of the three times
+        if (availableTimes.length > 0) {
+          return {
+            ...restaurant,
+            available_times: availableTimes, // Include the specific available times
+          };
+        }
+
+        return null; // Exclude restaurants with no availability
+      })
+    );
     
     res.json({
       success: true,
-      restaurants: availableRestaurants
+      restaurants: filteredRestaurants.filter(Boolean),
     });
   } catch (err) {
     console.error('Error searching restaurants:', err.message);
