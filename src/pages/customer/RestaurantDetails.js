@@ -49,7 +49,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
 import { format, addDays, parse, parseISO, format as formatDate } from 'date-fns';
 import AuthContext from '../../context/AuthContext';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { getRestaurantById } from '../../services/restaurantService';
 import { createReservation } from '../../services/reservationService';
 import { getRestaurantReviews, submitReview } from '../../services/reviewService';
@@ -103,15 +103,17 @@ const RestaurantDetails = () => {
   const [tabValue, setTabValue] = useState(0);
   
   // State for reservation
-  const [reservationParams, setReservationParams] = useState({
-    date: queryParams.get('date') ? new Date(queryParams.get('date')) : new Date(),
-    time: queryParams.get('time') 
-      ? parse(queryParams.get('time'), 'HH:mm', new Date()) 
-      : new Date(new Date().setHours(19, 0, 0, 0)), // Default to 7:00 PM
-    partySize: parseInt(queryParams.get('partySize')) || 2,
-    specialRequest: ''
-  });
-  
+
+ const [reservationParams, setReservationParams] = useState({
+  date: queryParams.get('date') ? parseISO(queryParams.get('date'))  : new Date(),
+  time: queryParams.get('time') 
+    ? parse(queryParams.get('time').substring(0, 5), 'HH:mm', new Date())  // Strip seconds
+    : new Date(new Date().setHours(19, 0, 0, 0)), // Default to 7:00 PM
+  partySize: parseInt(queryParams.get('partySize')) || 2,
+  specialRequest: ''
+});
+console.log(queryParams,queryParams.get('time'),queryParams.get('date'),new Date(queryParams.get('date')),new Date() );
+
   // State for reservation confirmation dialog
   const [openDialog, setOpenDialog] = useState(false);
   const [reservationSubmitting, setReservationSubmitting] = useState(false);
@@ -413,7 +415,7 @@ const RestaurantDetails = () => {
                 key={photo.id}
               >
                 <img 
-                  src={`${process.env.REACT_APP_API_URL}${photo.photo_url}`}
+                  src={`${process.env.REACT_APP_API_URL.replace('/api', '')}${photo.photo_url}`}
                   alt={`${restaurant.name} - ${index + 1}`} 
                   style={{ 
                     width: '100%', 
@@ -527,17 +529,22 @@ const RestaurantDetails = () => {
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={{
-                    lat: parseFloat(restaurant.latitude),
-                    lng: parseFloat(restaurant.longitude)
+                    lat: Number(restaurant.latitude),
+                    lng: Number(restaurant.longitude)
                   }}
                   zoom={15}
                 >
                   <Marker
-                    position={{
-                      lat: parseFloat(restaurant.latitude),
-                      lng: parseFloat(restaurant.longitude)
-                    }}
-                  />
+  position={{
+    lat: Number(restaurant.latitude),
+    lng: Number(restaurant.longitude)
+  }}
+  icon={{
+    url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+  }}
+/>
+  
+    
                 </GoogleMap>
               ) : (
                 <Paper
@@ -845,14 +852,14 @@ const RestaurantDetails = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Event color="primary" sx={{ mr: 2 }} />
             <Typography>
-              {format(reservationParams.date, 'EEEE, MMMM d, yyyy')}
+              {format(reservationParams.date, 'yyyy-MM-dd')}
             </Typography>
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <AccessTime color="primary" sx={{ mr: 2 }} />
             <Typography>
-              {format(reservationParams.time, 'h:mm a')}
+              {format(reservationParams.time, 'HH:mm')}
             </Typography>
           </Box>
           

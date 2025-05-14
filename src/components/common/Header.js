@@ -214,7 +214,7 @@ const Header = () => {
               textDecoration: 'none',
             }}
           >
-            DineEase
+            BookTable
           </Typography>
           
           {/* Desktop navigation */}

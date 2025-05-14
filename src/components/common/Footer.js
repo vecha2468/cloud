@@ -32,7 +32,7 @@ const Footer = () => {
         <Grid container spacing={3}>
           <Grid item xs={12} sm={4}>
             <Typography variant="h6" gutterBottom>
-              DineEase
+              BookTable
             </Typography>
             <Typography variant="body2" color="white">
               Find and book the best restaurants in your area.
@@ -79,7 +79,7 @@ const Footer = () => {
               Contact Us
             </Typography>
             <Typography variant="body2" color="white" paragraph>
-              Email: info@dineease.com
+              Email: info@BookTable.com
             </Typography>
             <Typography variant="body2" color="white" paragraph>
               Phone: (123) 456-7890
@@ -92,7 +92,7 @@ const Footer = () => {
         
         <Box mt={3} pt={3} borderTop={1} borderColor="grey.600">
           <Typography variant="body2" color="white" align="center">
-            &copy; {new Date().getFullYear()} DineEase. All rights reserved.
+            &copy; {new Date().getFullYear()} BookTable. All rights reserved.
           </Typography>
         </Box>
       </Container>

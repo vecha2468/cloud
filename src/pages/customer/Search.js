@@ -79,19 +79,21 @@ const Search = () => {
       try {
         // Format date for API request
         const formattedDate = format(searchParams.date, 'yyyy-MM-dd');
+        const dayOfWeek=searchParams.date.toLocaleDateString('en-US', { weekday: 'long' });
         const formattedTime = format(searchParams.time, 'HH:mm');
         
         // Prepare search parameters
         const apiParams = {
           date: formattedDate,
           time: formattedTime,
-          party_size: searchParams.partySize,
+          day_of_week:dayOfWeek,
+                    party_size: searchParams.partySize,
           location: searchParams.location || undefined,
           cuisine_type: filters.cuisines.length > 0 ? filters.cuisines[0] : undefined,
           rating: filters.rating > 0 ? filters.rating : undefined,
           price_range: filters.priceRange[1] < 5 ? filters.priceRange[1] : undefined
         };
-        console.log('API Params:', apiParams);
+  
         
         
         const response = await searchRestaurants(apiParams);
@@ -186,10 +188,18 @@ const Search = () => {
     });
   };
   
-  // Generate dollar signs for cost rating
+  console.log(restaurants)
+  // Generate dollar s  igns for cost rating
   const getCostRating = (rating) => {
-    return '$'.repeat(rating);
-  };
+   const costRatings = {
+     1: '$ (Budget)',
+     2: '$$ (Moderate)',
+     3: '$$$ (High-End)',
+     4: '$$$$ (Luxury)',
+     5: '$$$$$ (Ultra Luxury)'
+   };
+    return costRatings[rating] || '$ (Budget)';
+}
   
   // Handle reservation time selection
   const handleTimeSelection = (restaurantId, time) => {
@@ -392,7 +402,8 @@ const Search = () => {
                     width: { xs: '100%', sm: 200 },
                     height: { xs: 200, sm: 'auto' }
                   }}
-                  image={restaurant.primary_photo ? `${process.env.REACT_APP_API_URL}${restaurant.primary_photo}` : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4'}
+                  image={restaurant.primary_photo ? `${process.env.REACT_APP_API_URL.replace('/api', '')}${restaurant.primary_photo}
+` : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4'}
                   alt={restaurant.name}
                 />
                 <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>

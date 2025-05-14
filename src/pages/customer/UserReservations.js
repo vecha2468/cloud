@@ -206,7 +206,7 @@ const UserReservations = () => {
             <CardMedia
               component="img"
               sx={{ width: 80, height: 80, borderRadius: '4px', mr: 2 }}
-              image={reservation.restaurant_image ? `${process.env.REACT_APP_API_URL}${reservation.restaurant_image}` : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4'}
+              image={reservation.restaurant_image ? `${process.env.REACT_APP_API_URL.replace('/api', '')}${reservation.restaurant_image}` : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4'}
               alt={reservation.restaurant_name}
             />
             <Box>

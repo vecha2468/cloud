@@ -340,7 +340,8 @@ const RestaurantForm = () => {
   };
   
   // Handle next step
-  const handleNext = () => {
+  const handleNext = (e) => {
+     e.preventDefault();
     const isBasicInfoValid = activeStep === 0 && basicInfoSchema.isValidSync(formik.values);
     const isLocationContactValid = activeStep === 1 && locationContactSchema.isValidSync(formik.values);
     
@@ -692,7 +693,7 @@ const RestaurantForm = () => {
                       <Grid item xs={12} sm={4}>
                         <TimePicker
                           label="Opening Time"
-                          value={parse(hours.opening_time, 'HH:mm', new Date())}
+                          value={parse(hours.opening_time.substring(0, 5), 'HH:mm', new Date())}
                           onChange={(newValue) => {
                             const formattedTime = format(newValue, 'HH:mm');
                             handleHoursChange(index, 'opening_time', formattedTime);
@@ -704,7 +705,7 @@ const RestaurantForm = () => {
                       <Grid item xs={12} sm={4}>
                         <TimePicker
                           label="Closing Time"
-                          value={parse(hours.closing_time, 'HH:mm', new Date())}
+                          value={parse(hours.closing_time.substring(0, 5), 'HH:mm', new Date())}
                           onChange={(newValue) => {
                             const formattedTime = format(newValue, 'HH:mm');
                             handleHoursChange(index, 'closing_time', formattedTime);
@@ -777,7 +778,7 @@ const RestaurantForm = () => {
                             <CardMedia
                               component="img"
                               height="200"
-                              image={photo.isNew ? photo.url : `${process.env.REACT_APP_API_URL}${photo.photo_url}`}
+                              image={photo.isNew ? photo.url : `${process.env.REACT_APP_API_URL.replace('/api', '')}${photo.photo_url}`}
                               alt={`Restaurant photo ${index + 1}`}
                             />
                             <Box sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -827,6 +828,7 @@ const RestaurantForm = () => {
                 </Button>
               ) : (
                 <Button
+                  type="button" 
                   variant="contained"
                   onClick={handleNext}
                   endIcon={<ArrowForward />}

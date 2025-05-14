@@ -63,7 +63,7 @@ const Login = () => {
       <Paper elevation={3} className="auth-container">
         <Box p={4}>
           <Typography variant="h4" component="h1" align="center" gutterBottom>
-            Login to DineEase
+            Login to BookTable
           </Typography>
           
           <Box component="form" onSubmit={formik.handleSubmit} noValidate sx={{ mt: 2 }}>

@@ -222,7 +222,7 @@ const Home = () => {
                     component="img"
                     height="200"
                     image={restaurant.primary_photo 
-                      ? `${process.env.REACT_APP_API_URL}${restaurant.primary_photo}` 
+                      ? `${process.env.REACT_APP_API_URL.replace('/api', '')}${restaurant.primary_photo}` 
                       : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4'}
                     alt={restaurant.name}
                   />
